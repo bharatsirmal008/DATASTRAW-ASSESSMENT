@@ -16,15 +16,15 @@ Current target: the supplied Datastraw Aura Skincare assessment. This document s
 | Formatted JSON post-call outcome | Gemini structured output plus validation; JSON displayed and downloadable | Verified through actual browser chat and End action |
 | README Section 9 reflections | Four explicit answers in README | Complete |
 | Setup, architecture, .env.example | Root README and server environment example | Complete |
-| Public HTTPS application URL | One-service build/start instructions prepared | Pending external setup |
-| Published GitHub repository | Source prepared locally, private env ignored | Pending external setup |
+| Public HTTPS application URL | Vercel interface/API configuration with shared Redis sessions prepared | Pending external setup |
+| Published GitHub repository | https://github.com/bharatsirmal008/DATASTRAW-ASSESSMENT; private env ignored | Published |
 | 3-5 minute demonstration | Recording outline in SUBMISSION.md | Actual voice recording pending |
 | Approach note | Ready in SUBMISSION.md | Complete |
 | Owner's LinkedIn URL | Must be supplied by owner | Pending |
 
 ## Verification
 
-Final local checks: 165 backend and 35 frontend tests passed (200 total). Both production builds passed. Lint completed with seven existing warnings and no errors. Run `npm.cmd test`, `npm.cmd run build` and `npm.cmd --prefix client run lint` to reproduce. Tests mount the real voice hooks with mocked browser APIs for duplicate starts, mic denial, late provider response, ending during speech and failed-summary retry. Backend tests explicitly run the assessment API under NODE_ENV=production with saved JoJo settings to check isolation. Existing store-mode tests remain active.
+Final local checks: 170 backend and 37 frontend tests passed (207 total). Both production builds passed. Lint completed with seven existing warnings and no errors. Run `npm.cmd test`, `npm.cmd run build` and `npm.cmd --prefix client run lint` to reproduce. Tests mount the real voice hooks with mocked browser APIs for duplicate starts, mic denial, late provider response, ending during speech and failed-summary retry. Backend tests explicitly run the assessment API under NODE_ENV=production with saved JoJo settings to check isolation. Existing store-mode tests remain active.
 
 Live evidence: `output/assessment/live-verification.json`. On 19 October 2026, Gemini looked up ORD-101 from spoken letters/digits, declined cancelling that in-transit order, declined returning an opened product outside the window, asked for another order number, checked ORD-103 cancellation eligibility and refused flight booking. The live summary included actual tools and a 12-message transcript.
 

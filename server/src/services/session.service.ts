@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { AsyncLocalStorage } from 'node:async_hooks';
 
 export type MessageRole = 'user' | 'assistant';
 export type SessionStatus = 'ACTIVE' | 'ENDED';
@@ -41,7 +42,14 @@ export interface ConversationSession {
 }
 
 // In-memory session store (bounded lifetime, resets on server restart)
-const sessions = new Map<string, ConversationSession>();
+const localSessions = new Map<string, ConversationSession>();
+const requestSessions = new AsyncLocalStorage<Map<string, ConversationSession>>();
+function store() { return requestSessions.getStore() || localSessions; }
+// Existing synchronous domain operations run against an isolated request snapshot.
+// The HTTP adapter loads and atomically commits this snapshot under a Redis lease.
+export function runWithSessionSnapshot<T>(snapshot: Map<string, ConversationSession>, operation: () => T): T {
+  return requestSessions.run(snapshot, operation);
+}
 
 const SESSION_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
 const MAX_TOTAL_SESSIONS = 500;
@@ -50,6 +58,7 @@ const MAX_TOTAL_SESSIONS = 500;
  * Creates a new active conversation session.
  */
 export function createSession(): ConversationSession {
+  const sessions = store();
   cleanupExpiredSessions();
 
   if (sessions.size >= MAX_TOTAL_SESSIONS) {
@@ -76,6 +85,7 @@ export function createSession(): ConversationSession {
  * Retrieves an existing session by ID, returning null if expired or missing.
  */
 export function getSession(sessionId: string): ConversationSession | null {
+  const sessions = store();
   if (!sessionId || typeof sessionId !== 'string') return null;
   const session = sessions.get(sessionId);
   if (!session) return null;
@@ -103,6 +113,7 @@ export function addMessage(
   content: string,
   toolCalls?: ToolCallSummary[]
 ): ConversationMessage {
+  const sessions = store();
   const session = sessions.get(sessionId);
   if (!session) {
     throw new Error('SESSION_NOT_FOUND');
@@ -132,6 +143,7 @@ export function addMessage(
  * Updates context for a session (e.g. latest confirmed orderId).
  */
 export function updateSessionContext(sessionId: string, patch: Partial<SessionContext>): void {
+  const sessions = store();
   const session = sessions.get(sessionId);
   if (!session) return;
 
@@ -146,6 +158,7 @@ export function updateSessionContext(sessionId: string, patch: Partial<SessionCo
  * Marks a session as ENDED idempotently.
  */
 export function endSession(sessionId: string): ConversationSession | null {
+  const sessions = store();
   const session = sessions.get(sessionId);
   if (!session) return null;
 
@@ -161,6 +174,7 @@ export function endSession(sessionId: string): ConversationSession | null {
  * Attaches generated summary and analytics to session cache.
  */
 export function attachPostCallData(sessionId: string, summary: any, analytics: any): void {
+  const sessions = store();
   const session = sessions.get(sessionId);
   if (!session) return;
   session.summary = summary;
@@ -175,6 +189,7 @@ export function getCompletedSessions(limit = 20, offset = 0): {
   sessions: ConversationSession[];
   total: number;
 } {
+  const sessions = store();
   cleanupExpiredSessions();
   const completed = Array.from(sessions.values())
     .filter((s) => s.status === 'ENDED')
@@ -199,6 +214,7 @@ export function getCompletedSessions(limit = 20, offset = 0): {
  * Cleans up expired sessions.
  */
 export function cleanupExpiredSessions(maxAgeMs = SESSION_TTL_MS): void {
+  const sessions = store();
   const now = Date.now();
   for (const [id, session] of sessions.entries()) {
     const age = now - new Date(session.updatedAt).getTime();
@@ -212,5 +228,5 @@ export function cleanupExpiredSessions(maxAgeMs = SESSION_TTL_MS): void {
  * For testing purposes: resets in-memory store.
  */
 export function _resetSessionsForTesting(): void {
-  sessions.clear();
+  localSessions.clear();
 }

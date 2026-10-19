@@ -91,10 +91,13 @@ export async function sendMessageApi(
 
 export async function endSessionApi(sessionId: string): Promise<ConversationSession> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30000);
+  // An in-flight answer may hold the shared session lease. Ending is idempotent;
+  // retry only an explicit busy response, never blindly replay a customer message.
+  const timeout = setTimeout(() => controller.abort(), 65000);
 
   try {
-    const res = await fetch(
+    for (let attempt = 0; ; attempt++) {
+      const res = await fetch(
       `${API_URL}/api/conversations/sessions/${encodeURIComponent(sessionId)}/end`,
       {
         method: 'POST',
@@ -103,11 +106,16 @@ export async function endSessionApi(sessionId: string): Promise<ConversationSess
     );
 
     const json = await res.json().catch(() => null);
+    if (res.status === 409 && json?.error?.code === 'SESSION_BUSY' && attempt < 30 && !controller.signal.aborted) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      continue;
+    }
     if (!res.ok || !json?.success) {
       throw new Error(json?.error?.message || `Failed to end session (HTTP ${res.status})`);
     }
 
     return json.data.session;
+    }
   } finally {
     clearTimeout(timeout);
   }

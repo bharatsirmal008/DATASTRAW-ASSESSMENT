@@ -75,7 +75,7 @@ app.all("/api/{*path}", (_req, res) => {
 });
 
 // Production serves the built interface and API from the same origin.
-if (process.env.NODE_ENV === 'production') {
+if (process.env.NODE_ENV === 'production' && !process.env.VERCEL) {
   const clientDirectory = path.resolve(__dirname, '../../client/dist');
   app.use(express.static(clientDirectory));
   app.get('/{*path}', (_req, res) => res.sendFile(path.join(clientDirectory, 'index.html')));

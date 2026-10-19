@@ -80,7 +80,7 @@ First measure and improve real microphone-to-speaker latency on the deployed URL
 
 ## At 1,000 conversations per day (Section 9.4)
 
-Replace process-local sessions with durable storage and access controls, define transcript consent/retention, and add provider-budget limits, per-client rate limits, monitoring and load tests. Measure tokens, latency, tool failures and summary quality before sizing capacity. Model fallback helps availability only when the project's permitted models have quota. Move post-call work to a retryable job if it becomes slow, and use a shared cooldown/queue when running multiple server instances.
+Harden shared-session storage with access controls, define transcript consent/retention, and add provider-budget limits, per-client rate limits, monitoring and load tests. Measure tokens, latency, tool failures and summary quality before sizing capacity. Model fallback helps availability only when the project's permitted models have quota. Move post-call work to a retryable job if it becomes slow, and use a shared cooldown/queue when running multiple server instances.
 
 ## Validation
 
@@ -92,7 +92,7 @@ npm.cmd --prefix client run lint
 
 The test runner bundles locally with declared esbuild and runs Node tests; browser hooks use Testing Library and jsdom with mocked microphone, recognition, TTS and HTTP APIs. Tests cover actual duplicate starts, permission denial, end-during-thinking/speaking, summary retry, policy boundaries, unknown orders, session isolation, exports/summary contracts and quota switching. Test-only scripted fixtures cannot be selected by application environment variables in production.
 
-Final checks: 165 backend and 35 frontend tests passed (200 total), both builds passed, and lint completed with seven existing warnings and no errors. Real Gemini checks on 19 October 2026 verified an order lookup from spoken-style text, contextual cancellation refusal, opened-product return refusal, a missing-ID clarification followed by ORD-103 eligibility, an out-of-scope refusal, and a live structured summary with 12 chronological messages. The six recorded answer times ranged from 0.8 to 2.9 seconds on this local test; this is not a production latency guarantee. Evidence: `output/assessment/live-verification.json`.
+Final checks: 170 backend and 37 frontend tests passed (207 total), both builds passed, and lint completed with seven existing warnings and no errors. Real Gemini checks on 19 October 2026 verified an order lookup from spoken-style text, contextual cancellation refusal, opened-product return refusal, a missing-ID clarification followed by ORD-103 eligibility, an out-of-scope refusal, and a live structured summary with 12 chronological messages. The six recorded answer times ranged from 0.8 to 2.9 seconds on this local test; this is not a production latency guarantee. Evidence: `output/assessment/live-verification.json`.
 
 A final targeted check verified honest cancellation guidance without invented account screens, unknown ORD-999 handling, the unspecified INR-499 shipping boundary and another generated summary. A headless Chrome check verified no horizontal overflow at 390px and completed a real ORD-102 text chat through End and the rendered JSON/transcript screen. Evidence and reviewed screenshots are under `output/assessment/`, including `targeted-verification.json` and `ui-verification.json`.
 
@@ -110,13 +110,13 @@ Before starting a voice call, choose **Conversation language > Hindi**. This swi
 
 Use one Node web service with repository root as the working directory. Build command: `npm ci --prefix server && npm ci --prefix client && npm run build`. Start command: `npm start`. Set `APP_MODE=assessment`, `AI_PROVIDER=gemini`, `SUMMARY_PROVIDER=gemini`, `GEMINI_API_KEY`, `GEMINI_MODEL`, `GEMINI_FALLBACK_MODELS`, `NODE_ENV=production`, and `CLIENT_ORIGIN` to the actual public HTTPS origin. The host's `PORT` is respected. Keep `CATALOG_API_URL` empty for the assessment. Health path: `/api/health` (configuration presence is not a live provider-quota probe).
 
-Source repository: https://github.com/bharatsirmal008/DATASTRAW-ASSESSMENT. For the requested Vercel hosting, see [Vercel deployment](docs/VERCEL_DEPLOYMENT.md): the interface can run on Vercel, while the current API needs a continuously running backend or a shared-session-storage upgrade before moving to Vercel Functions. Public hosting remains pending.
+Source repository: https://github.com/bharatsirmal008/DATASTRAW-ASSESSMENT. For the requested entire application on Vercel, see [Vercel deployment](docs/VERCEL_DEPLOYMENT.md). The checked-in configuration serves the interface and Express API together with shared Redis sessions. Import the repository root, configure server-side Gemini and Upstash credentials, and keep `VITE_API_URL` unset. Public hosting and real cloud verification remain pending account connection and credentials.
 
 No custom domain or phone number is required. Choose a host with outbound HTTPS and browser-compatible HTTPS hosting. Re-test microphone access and the complete call/summary flow at the final URL.
 
 ## Current limits and deferred store work
 
-Sessions are in memory, bounded to 500 sessions with a two-hour inactivity lifetime, and disappear on restart. Session URLs use random IDs; there is no customer-account authentication. Global call-history listing is disabled. This is an assessment application, not a production store/order platform. Barge-in and Hinglish are optional and are not implemented as verified features.
+Local sessions use memory, bounded to 500 sessions with a two-hour inactivity lifetime. With Upstash configured, HTTP sessions use shared Redis storage and per-session leases; Vercel refuses calls if storage is absent. Redis transcripts/context/post-call artifacts expire after two hours. Five additional command-contract tests verify persistence and concurrency behavior (207 tests total); actual Vercel/Redis integration still needs cloud verification. Session URLs use random IDs and act as bearer access links; there is no customer-account authentication. Global call-history listing is disabled. This is an assessment application, not a production store/order platform. Barge-in and Hinglish are optional and are not implemented as verified features.
 
 JoJo Store integration is preserved for later. `APP_MODE=assessment` ignores the saved catalog URL and store branding. To resume store work later, set `APP_MODE=store`, restore/configure `CATALOG_API_URL` and `SUPPORT_BRAND_NAME`, then restart. Store mode does not expose assessment orders and still needs a real authenticated order integration. See `docs/CATALOG_CONNECTION.md` for that separate work.
 
