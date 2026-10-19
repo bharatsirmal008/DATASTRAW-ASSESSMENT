@@ -4,6 +4,7 @@ import orderRoutes from "./routes/order.routes";
 import policyRoutes from "./routes/policy.routes";
 import conversationRoutes from "./routes/conversation.routes";
 import { getServiceReadiness } from './services/readiness.service';
+import { probeSharedStorage, sharedStorageConfigured } from './services/shared-session.service';
 import path from 'node:path';
 import { getCatalogInfo, searchCatalog, isCatalogConfigured } from './services/catalog.service';
 
@@ -29,11 +30,13 @@ app.use(express.json({ limit: '32kb' }));
 app.use('/api', (_req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
 
 // Health check API (Phase 1 preserved)
-app.get("/api/health", (_req, res) => {
+app.get("/api/health", async (_req, res) => {
+  const readiness = getServiceReadiness();
+  const storage = process.env.VERCEL || sharedStorageConfigured() ? await probeSharedStorage() : { connected: true };
   res.status(200).json({
     success: true,
     message: "Aura AI Voice Agent API is running",
-    readiness: getServiceReadiness(),
+    readiness: { ...readiness, ready: readiness.ready && storage.connected, sessionStorageConnected: storage.connected, ...(storage.connected ? {} : { message: storage.message, storageError: storage.code }) },
   });
 });
 

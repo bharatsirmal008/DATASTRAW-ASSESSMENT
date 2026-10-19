@@ -12,20 +12,66 @@ export function sharedStorageConfigured(): boolean {
   return Boolean(process.env.UPSTASH_REDIS_REST_URL?.trim() && process.env.UPSTASH_REDIS_REST_TOKEN?.trim());
 }
 
+const storageMessages: Record<string, string> = {
+  SESSION_STORAGE_CONFIG_INVALID: 'Redis configuration is invalid. Check the server HTTPS REST URL and read/write token.',
+  SESSION_STORAGE_AUTH_FAILED: 'Redis authorization failed. Check the server REST token and its matching database URL.',
+  SESSION_STORAGE_READ_ONLY: 'Redis denied write access. Configure the read/write REST token, not the read-only token.',
+  SESSION_STORAGE_LIMIT: 'Redis usage limit was reached. Check the database limits in Upstash.',
+  SESSION_STORAGE_INVALID_RESPONSE: 'Redis returned an unexpected response. Check the server HTTPS REST endpoint.',
+  SESSION_STORAGE_UNAVAILABLE: 'Session storage is unavailable. Please try again.',
+};
+function storageFailure(code: string) {
+  return Object.assign(new Error(storageMessages[code] || storageMessages.SESSION_STORAGE_UNAVAILABLE), { status: 503, code });
+}
+function safeStorageCode(error: unknown): string {
+  const code = (error as { code?: string })?.code;
+  return code && Object.hasOwn(storageMessages, code) ? code : 'SESSION_STORAGE_UNAVAILABLE';
+}
 async function redisCommand(args: (string | number)[]): Promise<any> {
+  let status: number | undefined;
   try {
-    const url = new URL(process.env.UPSTASH_REDIS_REST_URL!);
-    if (url.protocol !== 'https:') throw new Error();
+    let url: URL;
+    const token = process.env.UPSTASH_REDIS_REST_TOKEN?.trim();
+    try {
+      url = new URL(process.env.UPSTASH_REDIS_REST_URL?.trim() || '');
+      if (url.protocol !== 'https:' || url.pathname !== '/' || url.search || url.hash || url.username || url.password || !token || /[\r\n]/.test(token)) throw new Error();
+    } catch { throw storageFailure('SESSION_STORAGE_CONFIG_INVALID'); }
     const response = await fetch(url, {
-      method: 'POST', headers: { Authorization: `Bearer ${process.env.UPSTASH_REDIS_REST_TOKEN}`, 'Content-Type': 'application/json' },
+      method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
       body: JSON.stringify(args), signal: AbortSignal.timeout(5000), redirect: 'error',
     });
-    const body = await response.json() as { result?: unknown; error?: string };
-    if (!response.ok || body.error) throw new Error();
+    status = response.status;
+    if (status === 401) throw storageFailure('SESSION_STORAGE_AUTH_FAILED');
+    if (status === 429) throw storageFailure('SESSION_STORAGE_LIMIT');
+    const body = await response.json().catch(() => { throw storageFailure('SESSION_STORAGE_INVALID_RESPONSE'); }) as { result?: unknown; error?: string };
+    if (!response.ok || body.error) {
+      const detail = typeof body.error === 'string' ? body.error : '';
+      if (/NOPERM|READONLY|read.only|no permissions|not permitted/i.test(detail)) throw storageFailure('SESSION_STORAGE_READ_ONLY');
+      if (status === 403 || /WRONGPASS|unauthori[sz]ed|invalid token|authentication/i.test(detail)) throw storageFailure('SESSION_STORAGE_AUTH_FAILED');
+      if (/quota|max.*requests|request.*limit|limit.*exceeded/i.test(detail)) throw storageFailure('SESSION_STORAGE_LIMIT');
+      throw storageFailure('SESSION_STORAGE_UNAVAILABLE');
+    }
+    if (!Object.hasOwn(body, 'result')) throw storageFailure('SESSION_STORAGE_INVALID_RESPONSE');
     return body.result;
-  } catch {
-    // Do not expose upstream responses, tokens, connection URLs or transcripts.
-    throw Object.assign(new Error('Session storage is unavailable. Please try again.'), { status: 503, code: 'SESSION_STORAGE_UNAVAILABLE' });
+  } catch (error) {
+    const code = safeStorageCode(error);
+    // Fixed categories only: never log upstream messages, URLs, tokens, keys or transcripts.
+    console.error('[SessionStorage]', { code, httpStatus: status, command: String(args[0]) });
+    throw storageFailure(code);
+  }
+}
+
+/** Verify the same read/write/Lua capabilities used by call sessions. */
+export async function probeSharedStorage(): Promise<{ connected: boolean; code?: string; message?: string }> {
+  if (!sharedStorageConfigured()) return { connected: false, code: 'SESSION_STORAGE_NOT_CONFIGURED', message: 'Shared session storage is not configured.' };
+  try {
+    const value = crypto.randomUUID();
+    const result = await redisCommand(['EVAL', "redis.call('SET', KEYS[1], ARGV[1], 'EX', 10); local value = redis.call('GET', KEYS[1]); redis.call('DEL', KEYS[1]); return value", 1, 'aria:health:' + crypto.randomUUID(), value]);
+    if (result !== value) throw storageFailure('SESSION_STORAGE_INVALID_RESPONSE');
+    return { connected: true };
+  } catch (error) {
+    const code = safeStorageCode(error);
+    return { connected: false, code, message: storageMessages[code] };
   }
 }
 
@@ -87,9 +133,10 @@ export function withSharedSession(handler: RequestHandler, command: Command = re
       // Release even for missing sessions before responding (serverless can suspend after response).
       if (lock && acquired) { await command(['EVAL', RELEASE, 1, lock, token]); acquired = false; }
       originalJson.call(res, payload);
-    } catch {
+    } catch (error) {
       res.json = originalJson;
-      res.status(503).json({ success: false, error: { code: 'SESSION_STORAGE_UNAVAILABLE', message: 'Could not save or load the call. Please try again.' } });
+      const code = safeStorageCode(error);
+      res.status(503).json({ success: false, error: { code, message: storageMessages[code] } });
     } finally {
       res.json = originalJson;
       if (lock && acquired) {
