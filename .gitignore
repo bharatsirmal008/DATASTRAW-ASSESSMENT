@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+tmp/
+
+# Build output
+dist/
+.test-build/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+.env.*
+!.env.example
+
+# Local verification screenshots, transcripts and generated artifacts
+output/
+
+# IDE
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
