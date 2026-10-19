@@ -9,19 +9,15 @@ import {
 
 /**
  * Returns the configured AI provider based on AI_PROVIDER environment variable.
- * Live Gemini is the only application provider. Fixtures are test-only.
+ * Live Gemini is the application provider.
  */
 export function getAIProvider(): AIProvider {
-  if (process.env.NODE_ENV === 'test' && process.env.AI_PROVIDER === 'demo') {
-    const { DemoProvider } = require('../../tests/fixtures/demo.provider');
-    return new DemoProvider();
-  }
   return new GeminiProvider();
 }
 
 export interface ConversationTurnResult {
   response: string;
-  mode: 'DEMO' | 'GEMINI';
+  mode: 'GEMINI';
   toolCalls: ProviderResponse['toolCalls'];
   session: ConversationSession;
 }
@@ -30,7 +26,7 @@ export interface ConversationTurnResult {
  * Orchestrates a complete user conversation turn:
  * 1. Validates active session
  * 2. Records user turn
- * 3. Dispatches to selected AI provider (Demo or Gemini)
+ * 3. Dispatches to live Gemini provider
  * 4. Updates session context
  * 5. Records assistant response with tool execution metadata
  */

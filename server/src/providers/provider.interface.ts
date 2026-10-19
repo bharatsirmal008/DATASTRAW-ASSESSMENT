@@ -9,13 +9,13 @@ export interface ToolCallExecution {
 
 export interface ProviderResponse {
   content: string;
-  mode: 'DEMO' | 'GEMINI';
+  mode: 'GEMINI';
   toolCalls: ToolCallExecution[];
   contextPatch?: Partial<SessionContext>;
 }
 
 export interface AIProvider {
-  readonly mode: 'DEMO' | 'GEMINI';
+  readonly mode: 'GEMINI';
   generateResponse(params: {
     userMessage: string;
     messages: ConversationMessage[];

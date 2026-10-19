@@ -2,9 +2,10 @@
   "name": "aura-voice-support",
   "private": true,
   "scripts": {
-    "test": "node scripts/run-tests.mjs server && node scripts/run-tests.mjs client",
     "build": "npm --prefix server run build && npm --prefix client run build",
-    "start": "node scripts/start-local.mjs"
+    "start": "npm --prefix server start"
   },
-  "engines": { "node": ">=22.12.0" }
+  "engines": {
+    "node": ">=22.12.0"
+  }
 }

@@ -7,13 +7,9 @@ import {
   endSessionHandler,
   getPostCallHandler,
   retrySummaryHandler,
-  getCallHistoryHandler,
 } from '../controllers/conversation.controller';
 
 const router = Router();
-
-// GET /api/conversations/history - Completed sessions history (must precede /:sessionId)
-router.get('/history', getCallHistoryHandler);
 
 // POST /api/conversations/sessions - Initialize new session
 router.post('/sessions', withSharedSession(createSessionHandler));

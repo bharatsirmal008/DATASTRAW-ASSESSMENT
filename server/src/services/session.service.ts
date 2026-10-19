@@ -183,34 +183,6 @@ export function attachPostCallData(sessionId: string, summary: any, analytics: a
 }
 
 /**
- * Retrieves completed sessions for call history with bounded pagination.
- */
-export function getCompletedSessions(limit = 20, offset = 0): {
-  sessions: ConversationSession[];
-  total: number;
-} {
-  const sessions = store();
-  cleanupExpiredSessions();
-  const completed = Array.from(sessions.values())
-    .filter((s) => s.status === 'ENDED')
-    .sort((a, b) => new Date(b.endedAt || b.updatedAt).getTime() - new Date(a.endedAt || a.updatedAt).getTime());
-
-  const total = completed.length;
-  const boundedLimit = Math.max(1, Math.min(limit, 50));
-  const boundedOffset = Math.max(0, offset);
-  const sliced = completed.slice(boundedOffset, boundedOffset + boundedLimit);
-
-  return {
-    sessions: sliced.map((s) => ({
-      ...s,
-      messages: [...s.messages],
-      context: { ...s.context },
-    })),
-    total,
-  };
-}
-
-/**
  * Cleans up expired sessions.
  */
 export function cleanupExpiredSessions(maxAgeMs = SESSION_TTL_MS): void {
@@ -224,9 +196,3 @@ export function cleanupExpiredSessions(maxAgeMs = SESSION_TTL_MS): void {
   }
 }
 
-/**
- * For testing purposes: resets in-memory store.
- */
-export function _resetSessionsForTesting(): void {
-  localSessions.clear();
-}

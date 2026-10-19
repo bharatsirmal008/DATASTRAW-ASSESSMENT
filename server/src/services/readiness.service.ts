@@ -22,7 +22,6 @@ export function getServiceReadiness() {
 }
 
 export function requireLiveAI(): void {
-  if (process.env.NODE_ENV === 'test') return;
   if (!getServiceReadiness().aiConfigured) {
     throw Object.assign(new Error('AI support is not configured. Add GEMINI_API_KEY to server/.env on the server.'), {
       code: 'AI_NOT_CONFIGURED', status: 503,

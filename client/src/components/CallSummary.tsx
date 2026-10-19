@@ -2,7 +2,7 @@ import type { StructuredCallOutcome, ResolutionStatus, CustomerIntent } from '..
 
 interface CallSummaryProps {
   summary: StructuredCallOutcome;
-  onRetry?: (mode?: 'DEMO' | 'GEMINI') => void;
+  onRetry?: (mode?: 'GEMINI') => void;
   isRetrying?: boolean;
 }
 

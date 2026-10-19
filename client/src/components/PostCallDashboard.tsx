@@ -20,7 +20,7 @@ export function PostCallDashboard({
   const [isRetrying, setIsRetrying] = useState<boolean>(false);
   const [retryError, setRetryError] = useState<string | null>(null);
 
-  const handleRetrySummary = async (mode?: 'DEMO' | 'GEMINI') => {
+  const handleRetrySummary = async (mode?: 'GEMINI') => {
     setIsRetrying(true);
     setRetryError(null);
     try {

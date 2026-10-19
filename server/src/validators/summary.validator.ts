@@ -131,8 +131,8 @@ export function validateSummaryOutcome(
   }
 
   // 7. Validate summary_mode
-  if (o.summary_mode !== 'DEMO' && o.summary_mode !== 'GEMINI') {
-    errors.push(`Invalid summary_mode: "${o.summary_mode}". Expected DEMO or GEMINI.`);
+  if (o.summary_mode !== 'GEMINI') {
+    errors.push(`Invalid summary_mode: "${o.summary_mode}". Expected GEMINI.`);
   }
 
   return {

@@ -4,7 +4,6 @@ import type {
   PostCallData,
   StructuredCallOutcome,
   CallAnalytics,
-  CallHistoryItem,
 } from '../types/summary';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
@@ -146,7 +145,7 @@ export async function getPostCallApi(sessionId: string): Promise<PostCallData> {
 
 export async function retrySummaryApi(
   sessionId: string,
-  mode?: 'DEMO' | 'GEMINI'
+  mode?: 'GEMINI'
 ): Promise<{
   session: ConversationSession;
   summary: StructuredCallOutcome;
@@ -177,28 +176,3 @@ export async function retrySummaryApi(
   }
 }
 
-export async function getCallHistoryApi(
-  limit = 20,
-  offset = 0
-): Promise<{ history: CallHistoryItem[]; total: number; limit: number; offset: number }> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 8000);
-
-  try {
-    const res = await fetch(
-      `${API_URL}/api/conversations/history?limit=${limit}&offset=${offset}`,
-      {
-        signal: controller.signal,
-      }
-    );
-
-    const json = await res.json().catch(() => null);
-    if (!res.ok || !json?.success) {
-      throw new Error(json?.error?.message || `Failed to fetch call history (HTTP ${res.status})`);
-    }
-
-    return json.data;
-  } finally {
-    clearTimeout(timeout);
-  }
-}

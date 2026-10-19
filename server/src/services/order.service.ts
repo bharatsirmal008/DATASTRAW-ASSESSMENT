@@ -23,7 +23,7 @@ export function normalizeOrderId(rawOrderId: unknown): string | null {
  * Retrieves all mock orders for evaluator convenience (scenario testing only).
  */
 export function getAllMockOrders(): MockOrder[] {
-  if (!isAssessmentMode() && process.env.NODE_ENV !== 'test') throw Object.assign(new Error('The store order system is not connected.'), { code: 'ORDER_SERVICE_NOT_CONFIGURED', status: 503 });
+  if (!isAssessmentMode()) throw Object.assign(new Error('The store order system is not connected.'), { code: 'ORDER_SERVICE_NOT_CONFIGURED', status: 503 });
   return assessmentOrders.map(order => ({ ...order }));
 }
 
@@ -32,7 +32,7 @@ export function getAllMockOrders(): MockOrder[] {
  * Pure and independent of HTTP.
  */
 export function findOrderById(rawOrderId: unknown): OrderLookupResult {
-  if (!isAssessmentMode() && process.env.NODE_ENV !== 'test') throw Object.assign(new Error('The store order system is not connected.'), { code: 'ORDER_SERVICE_NOT_CONFIGURED', status: 503 });
+  if (!isAssessmentMode()) throw Object.assign(new Error('The store order system is not connected.'), { code: 'ORDER_SERVICE_NOT_CONFIGURED', status: 503 });
   const normalizedId = normalizeOrderId(rawOrderId);
 
   if (!normalizedId) {

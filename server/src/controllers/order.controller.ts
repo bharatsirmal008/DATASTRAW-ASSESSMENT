@@ -7,7 +7,7 @@ import { isAssessmentMode } from '../config/application';
  * Returns the three sample orders for evaluator convenience.
  */
 export function getTestOrders(_req: Request, res: Response): void {
-  if (!isAssessmentMode() && process.env.NODE_ENV !== 'test') {
+  if (!isAssessmentMode()) {
     res.status(404).json({ success: false, error: { code: 'ROUTE_NOT_FOUND', message: 'API route not found.' } });
     return;
   }
@@ -33,7 +33,7 @@ export function getTestOrders(_req: Request, res: Response): void {
  * Returns the verified order or a 400/404 JSON response.
  */
 export function getOrderById(req: Request, res: Response): void {
-  if (!isAssessmentMode() && process.env.NODE_ENV !== 'test') {
+  if (!isAssessmentMode()) {
     res.status(503).json({ success: false, error: { code: 'ORDER_SERVICE_NOT_CONFIGURED', message: 'The store order system is not connected. No order lookup was performed.' } });
     return;
   }

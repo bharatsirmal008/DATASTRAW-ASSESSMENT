@@ -4,13 +4,12 @@ import {
   getSession,
   endSession,
   attachPostCallData,
-  getCompletedSessions,
 } from '../services/session.service';
 import { processUserMessage } from '../services/conversation.service';
 import { processSessionTranscript } from '../services/transcript.service';
-import { generateCallSummary, generateDemoSummary } from '../services/summary.service';
+import { generateCallSummary } from '../services/summary.service';
 import { calculateCallAnalytics } from '../services/analytics.service';
-import type { CallHistoryItem, SummaryMode } from '../types/summary.types';
+import type { SummaryMode } from '../types/summary.types';
 import { requireLiveAI } from '../services/readiness.service';
 
 /**
@@ -22,15 +21,7 @@ async function ensurePostCallArtifacts(
 ): Promise<{ summary: any; analytics: any }> {
   let summary = session.summary;
   if (!summary || forceMode) {
-    try {
-      summary = await generateCallSummary(session, forceMode);
-    } catch (err: any) {
-      if (process.env.NODE_ENV !== 'test' || err.code === 'GEMINI_NOT_CONFIGURED') {
-        throw err;
-      }
-      console.warn('[PostCall] Summary generation warning, falling back to DEMO:', err.message);
-      summary = generateDemoSummary(session);
-    }
+    summary = await generateCallSummary(session, forceMode);
   }
 
   let analytics = session.analytics;
@@ -281,56 +272,3 @@ export async function retrySummaryHandler(req: Request, res: Response): Promise<
   }
 }
 
-/**
- * GET /api/conversations/history
- * Returns completed calls from the in-memory store with bounded pagination.
- */
-export function getCallHistoryHandler(req: Request, res: Response): void {
-  if (process.env.NODE_ENV !== 'test') {
-    res.status(503).json({ success: false, error: { code: 'HISTORY_AUTH_REQUIRED', message: 'Call history requires authenticated access and is not enabled.' } });
-    return;
-  }
-  try {
-    const limitQuery = parseInt(req.query.limit as string, 10);
-    const offsetQuery = parseInt(req.query.offset as string, 10);
-
-    const limit = isNaN(limitQuery) ? 20 : limitQuery;
-    const offset = isNaN(offsetQuery) ? 0 : offsetQuery;
-
-    const { sessions, total } = getCompletedSessions(limit, offset);
-
-    const historyItems: CallHistoryItem[] = sessions.map((s) => {
-      const summary = s.summary || generateDemoSummary(s);
-      const analytics = s.analytics || calculateCallAnalytics(s, summary);
-
-      return {
-        sessionId: s.id,
-        completedAt: s.endedAt || s.updatedAt,
-        primaryIntent: summary.customer_intent,
-        resolutionStatus: summary.resolution_status,
-        orderIds: summary.order_ids,
-        totalTurns: analytics.customerTurns + analytics.assistantTurns,
-        durationSeconds: analytics.durationSeconds,
-        summaryMode: summary.summary_mode,
-      };
-    });
-
-    res.status(200).json({
-      success: true,
-      data: {
-        history: historyItems,
-        total,
-        limit,
-        offset,
-      },
-    });
-  } catch (error: any) {
-    res.status(500).json({
-      success: false,
-      error: {
-        code: 'HISTORY_FETCH_FAILED',
-        message: 'Could not fetch conversation history.',
-      },
-    });
-  }
-}

@@ -1,6 +1,6 @@
 export type MessageRole = 'user' | 'assistant';
 export type SessionStatus = 'ACTIVE' | 'ENDED';
-export type ProviderMode = 'DEMO' | 'GEMINI';
+export type ProviderMode = 'GEMINI';
 
 export interface ToolCallSummary {
   name: string;

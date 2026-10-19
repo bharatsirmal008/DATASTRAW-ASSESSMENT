@@ -21,7 +21,7 @@ export type ResolutionStatus =
   | 'UNRESOLVED'
   | 'NEEDS_FOLLOW_UP';
 
-export type SummaryMode = 'DEMO' | 'GEMINI';
+export type SummaryMode = 'GEMINI';
 
 export interface StructuredCallOutcome {
   session_id: string;
@@ -71,15 +71,4 @@ export interface PostCallData {
   summary: StructuredCallOutcome;
   analytics: CallAnalytics;
   mode: SummaryMode;
-}
-
-export interface CallHistoryItem {
-  sessionId: string;
-  completedAt: string;
-  primaryIntent: CustomerIntent;
-  resolutionStatus: ResolutionStatus;
-  orderIds: string[];
-  totalTurns: number;
-  durationSeconds: number | null;
-  summaryMode: SummaryMode;
 }
