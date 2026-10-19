@@ -16,14 +16,14 @@ app.use((_req, res, next) => {
   next();
 });
 
-// Allow frontend to communicate with backend
-app.use(
-  cors({
-    origin: process.env.CLIENT_ORIGIN
-      ? process.env.CLIENT_ORIGIN.split(',').map(origin => origin.trim())
-      : ["http://localhost:5173", "http://127.0.0.1:5173"],
-  })
-);
+// Keep the approved production client accessible even if CLIENT_ORIGIN still
+// contains an older preview URL. Additional origins remain explicitly configured.
+const allowedClientOrigins = Array.from(new Set([
+  'https://datastraw-assessment.vercel.app',
+  ...(process.env.VERCEL ? [] : ['http://localhost:5173', 'http://127.0.0.1:5173']),
+  ...(process.env.CLIENT_ORIGIN || '').split(',').map(origin => origin.trim().replace(/\/+$/, '')).filter(Boolean),
+]));
+app.use(cors({ origin: allowedClientOrigins }));
 
 // Enable JSON request handling
 app.use(express.json({ limit: '32kb' }));
