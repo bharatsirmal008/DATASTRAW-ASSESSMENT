@@ -1,6 +1,6 @@
 import type { BrandPolicies, PolicyEvaluationResult } from '../types/policy';
 
-const API_URL = import.meta.env.VITE_API_URL || '';
+const API_URL = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
 
 export async function fetchPolicies(): Promise<BrandPolicies> {
   const controller = new AbortController();

@@ -1,4 +1,4 @@
-# Aria ? Aura Skincare Voice Agent
+# Aria - Aura Skincare Voice Agent
 
 Browser voice and text support for the Datastraw assessment. Aria uses live Gemini reasoning, verified policy tools and the three fictional orders supplied in the assessment. English and Hindi are supported, including spoken language switching during a call.
 
@@ -15,21 +15,31 @@ Open http://localhost:5000 (or the PORT configured in server/.env). For developm
 
 ## Features and architecture
 
-React handles microphone recognition, speech synthesis, call states and transcripts. Express keeps Gemini credentials, order/policy tools and summary validation on the server. End Call produces a chronological transcript and structured JSON outcome. Indian English voices are preferred when installed; Hindi requires an installed Hindi voice. Say ?Speak in Hindi? or ?Speak in English? during a call to switch while retaining context.
+React handles microphone recognition, speech synthesis, call states and transcripts. Express keeps Gemini credentials, order/policy tools and summary validation on the server. End Call produces a chronological transcript and structured JSON outcome. Indian English voices are preferred when installed; Hindi requires an installed Hindi voice. Say "Speak in Hindi" or "Speak in English" during a call to switch while retaining context.
 
 The assessment orders ORD-101, ORD-102 and ORD-103 are intentionally retained. Aria provides eligibility and policy guidance; it does not execute cancellations, refunds or replacements. There is no scripted/demo AI fallback.
 
-## Vercel deployment
+## Separate client and server deployments on Vercel
 
-Import this repository with the repository root as Root Directory and framework Other. The checked-in vercel.json installs/builds both packages, serves client/dist and routes /api to Express. Keep VITE_API_URL unset for same-origin requests.
+Import the same GitHub repository twice as two Vercel projects. Each folder has its own vercel.json. Do not import the repository root as a combined project.
 
-Configure server-side APP_MODE=assessment, AI_PROVIDER=gemini, SUMMARY_PROVIDER=gemini, GEMINI_API_KEY, permitted GEMINI_MODEL/GEMINI_FALLBACK_MODELS, NODE_ENV=production and CLIENT_ORIGIN with the final HTTPS origin. Keep CATALOG_API_URL empty for the assessment.
+| Setting | Server project | Client project |
+| --- | --- | --- |
+| Root Directory | server | client |
+| Framework | Express | Vite |
+| Install | npm ci --include=dev | npm ci --include=dev |
+| Build | npm run build | npm run build |
+| Output | Framework managed | dist |
 
-Connect a durable Upstash Redis database and set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN. Keep both credentials server-side; never use VITE_ for secrets. Use separate preview and production databases. Vercel refuses calls without shared storage. Local runs can use memory when Redis is absent.
+1. Create the server project first. Configure server-only APP_MODE=assessment, AI_PROVIDER=gemini, SUMMARY_PROVIDER=gemini, GEMINI_API_KEY, permitted GEMINI_MODEL/GEMINI_FALLBACK_MODELS and NODE_ENV=production. Keep CATALOG_API_URL empty.
+2. Connect a durable Upstash Redis database and set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN on the server project. Keep preview/production storage separate. Never put these secrets on the client project.
+3. On the client project, set VITE_API_URL to the actual server HTTPS origin, without /api. The Vercel client build rejects a missing/invalid origin. Changing this variable requires a client rebuild.
+4. Set server CLIENT_ORIGIN to the exact deployed client HTTPS origin and redeploy the server. Additional trusted preview origins can be comma-separated; do not use a wildcard. Ensure both production URLs are publicly accessible for reviewers and browser API requests.
+5. Check the server's /api/health, then open the client and run a complete Chrome/Edge voice call. Verify context, language switching, End Call, transcript and JSON outcome. Readiness reports configuration presence, not quota or Redis connectivity.
 
-Shared sessions retain context, transcripts and summaries for two hours. Per-session leases prevent concurrent overwrites, and success responses wait for persistence. End Call retries a busy session while an answer finishes. Session URLs act as bearer access links; there is no customer-account authentication or public call-history endpoint.
+Shared sessions retain context, transcripts and summaries for two hours. Per-session leases prevent concurrent overwrites, and success responses wait for persistence. End Call retries a busy session while an answer finishes. Vercel refuses calls without shared storage; local Node runs may use memory. Session URLs act as bearer access links; there is no customer-account authentication or public call-history endpoint.
 
-Check /api/health and complete a real Chrome/Edge voice call on the deployed HTTPS URL, including order context, language switching, End Call and JSON output. Readiness checks configuration presence, not provider quota or storage connectivity. Public deployment verification is still pending account connection and credentials.
+Public deployment and cloud verification remain pending Vercel access and server credentials. The local server can still serve the built client for local use.
 
 ## Assessment reflections (Section 9)
 
